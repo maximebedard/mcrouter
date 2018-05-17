@@ -96,8 +96,10 @@ McSerializedRequest::McSerializedRequest(
       result_ = detail::prepareUmbrella(
           req, umbrellaMessage_, reqId, iovsBegin_, iovsCount_);
       break;
-    case mc_unknown_protocol:
     case mc_binary_protocol:
+      new (&binaryRequest_) BinarySerializedRequest;
+      break;
+    case mc_unknown_protocol:
     case mc_nprotocols:
       checkLogic(false, "Used unsupported protocol! Value: {}", (int)protocol_);
       result_ = Result::ERROR;

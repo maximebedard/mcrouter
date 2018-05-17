@@ -75,6 +75,7 @@ class McSerializedRequest {
 
   union {
     AsciiSerializedRequest asciiRequest_;
+    BinarySerializedRequest binaryRequest_;
     UmbrellaSerializedMessage umbrellaMessage_;
     CaretSerializedMessage caretRequest_;
   };
