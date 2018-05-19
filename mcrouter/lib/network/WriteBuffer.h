@@ -16,6 +16,7 @@
 #include "mcrouter/lib/mc/umbrella.h"
 #include "mcrouter/lib/network/AsciiSerialized.h"
 #include "mcrouter/lib/network/BinarySerialized.h"
+#include "mcrouter/lib/network/BinarySerialized.h"
 #include "mcrouter/lib/network/CaretSerializedMessage.h"
 #include "mcrouter/lib/network/McServerRequestContext.h"
 #include "mcrouter/lib/network/UmbrellaProtocol.h"
@@ -119,7 +120,7 @@ class WriteBuffer {
   /* Write buffers */
   union {
     AsciiSerializedReply asciiReply_;
-    BinarySerializedReply binaryeply_;
+    BinarySerializedReply binaryReply_;
     UmbrellaSerializedMessage umbrellaReply_;
     CaretSerializedMessage caretReply_;
   };

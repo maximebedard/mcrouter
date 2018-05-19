@@ -406,7 +406,7 @@ const char* mc_req_err_to_string(const mc_req_err_t err);
  */
 const char* mc_res_to_response_string(const mc_res_t result);
 
-typedef enum mc_opcode_e : uint8_t {
+typedef enum mc_opcode_e {
   mc_opcode_noop               = 0x0a,
   mc_opcode_set                = 0x01,
   mc_opcode_setq               = 0x11,

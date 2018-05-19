@@ -101,7 +101,7 @@ bool McServerBinaryParser::parseHeader(const char * bytes) {
       currentMessage_.emplace<McAddRequest>();
       consumer_ = &McServerBinaryParser::consumeSetLike<McAddRequest, false>;
       return true;
-    case mc_opcode_addq
+    case mc_opcode_addq:
       currentMessage_.emplace<McAddRequest>();
       consumer_ = &McServerBinaryParser::consumeSetLike<McAddRequest, true>;
       return true;
@@ -223,14 +223,14 @@ bool McServerBinaryParser::parseHeader(const char * bytes) {
     case mc_opcode_tapvbucketset:
     case mc_opcode_getvbucket:
     case mc_opcode_tapdelete:
-    case mc_opcode_verosity:
+    case mc_opcode_verbosity:
     case mc_opcode_tapflush:
     case mc_opcode_delvbucket:
     case mc_opcode_tapconnect:
     case mc_opcode_tapmutation:
     case mc_opcode_tapopaque:
     case mc_opcode_tapcheckpointstart:
-    case mc_opcode_tapcheckpointend::
+    case mc_opcode_tapcheckpointend:
     default:
       return false;
   }

@@ -8,6 +8,7 @@
 #pragma once
 
 #include "mcrouter/lib/network/AsciiSerialized.h"
+#include "mcrouter/lib/network/BinarySerialized.h"
 #include "mcrouter/lib/network/McAsciiParser.h"
 #include "mcrouter/lib/network/McBinaryParser.h"
 #include "mcrouter/lib/network/McParser.h"

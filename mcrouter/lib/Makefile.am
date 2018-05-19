@@ -128,6 +128,9 @@ libmcrouter_a_SOURCES = \
   network/AsciiSerialized-inl.h \
   network/AsciiSerialized.cpp \
   network/AsciiSerialized.h \
+  network/BinarySerialized-inl.h \
+  network/BinarySerialized.cpp \
+  network/BinarySerialized.h \
   network/AsyncMcClient-inl.h \
   network/AsyncMcClient.h \
   network/AsyncMcClientImpl-inl.h \

@@ -171,6 +171,5 @@ class RequestCommon {
       facebook::memcache::Ref<mc_fbtrace_info_t, McFbtraceRefPolicy>;
   McFbtraceRef fbtraceInfo_;
 #endif
-};
 
 } // carbon

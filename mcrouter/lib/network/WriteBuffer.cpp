@@ -106,6 +106,7 @@ WriteBuffer::List& WriteBufferQueue::initFreeStack(
     mc_protocol_t protocol) noexcept {
   assert(
       protocol == mc_ascii_protocol ||
+      protocol == mc_binary_protocol ||
       protocol == mc_umbrella_protocol_DONOTUSE ||
       protocol == mc_caret_protocol);
 
