@@ -120,7 +120,7 @@ class ProcessBase(object):
         if stderr:
             print("{} ({}) stdout:\n{}".format(self, self.cmd_line, stderr))
 
-class MCBinaryClient:
+class MCBinaryProtocol:
     RESPONSE_CODES = {
         0: 'No error',
         1: 'Key not found',
@@ -142,64 +142,67 @@ class MCBinaryClient:
     }
 
     OPCODES = {
-      'get': 0x00,
-      'set': 0x01,
-      'add': 0x02,
-      'replace': 0x03,
-      'delete': 0x04,
-      'incr': 0x05,
-      'decr': 0x06,
-      'flush': 0x08,
-      'noop': 0x0A,
-      'version': 0x0B,
-      'getkq': 0x0D,
-      'append': 0x0E,
-      'prepend': 0x0F,
-      'stat': 0x10,
-      'setq': 0x11,
-      'addq': 0x12,
-      'replaceq': 0x13,
-      'deleteq': 0x14,
-      'incrq': 0x15,
-      'decrq': 0x16,
-      'auth_negotiation': 0x20,
-      'auth_request': 0x21,
-      'auth_continue': 0x22,
-      'touch': 0x1C,
+        'get': 0x00,
+        'set': 0x01,
+        'add': 0x02,
+        'replace': 0x03,
+        'delete': 0x04,
+        'incr': 0x05,
+        'decr': 0x06,
+        'flush': 0x08,
+        'noop': 0x0A,
+        'version': 0x0B,
+        'getkq': 0x0D,
+        'append': 0x0E,
+        'prepend': 0x0F,
+        'stat': 0x10,
+        'setq': 0x11,
+        'addq': 0x12,
+        'replaceq': 0x13,
+        'deleteq': 0x14,
+        'incrq': 0x15,
+        'decrq': 0x16,
+        'auth_negotiation': 0x20,
+        'auth_request': 0x21,
+        'auth_continue': 0x22,
+        'touch': 0x1C,
     }
-
-    HEADER = 'CCnCCnNNQ'
 
     OP_FORMAT = {
-      'get': 'a*',
-      'set': 'NNa*a*',
-      'add': 'NNa*a*',
-      'replace': 'NNa*a*',
-      'delete': 'a*',
-      'incr': 'NNNNNa*',
-      'decr': 'NNNNNa*',
-      'flush': 'N',
-      'noop': '',
-      'getkq': 'a*',
-      'version': '',
-      'stat': 'a*',
-      'append': 'a*a*',
-      'prepend': 'a*a*',
-      'auth_request': 'a*a*',
-      'auth_continue': 'a*a*',
-      'touch': 'Na*',
+        'get': 'a*',
+        'set': 'NNa*a*',
+        'add': 'NNa*a*',
+        'replace': 'NNa*a*',
+        'delete': 'a*',
+        'incr': 'NNNNNa*',
+        'decr': 'NNNNNa*',
+        'flush': 'N',
+        'noop': '',
+        'getkq': 'a*',
+        'version': '',
+        'stat': 'a*',
+        'append': 'a*a*',
+        'prepend': 'a*a*',
+        'auth_request': 'a*a*',
+        'auth_continue': 'a*a*',
+        'touch': 'Na*',
     }
 
-    FORMAT = {k: HEADER + v for k, v in OP_FORMAT.items()}
+    HEADER = "CCnCCnNNQ"
+    REQUEST = 0x80
+    RESPONSE = 0x81
 
-    def _get(self, cmd, keys, expect_cas, return_all_info):
-        pass
+    @classmethod
+    def FORMAT(cls):
+        return {k: HEADER + v for k, v in OP_FORMAT.items()}
 
     def get(self, keys, return_all_info=False):
-        pass
+        buffer = struct.pack(FORMAT['get'], REQUEST, OPCODES['get'], _bytesize(key), 0, 0, 0, _bytesize(key), 0, 0, key)
+        return self.connection.sendall(buffer)
 
     def gets(self, keys):
-        pass
+        buffer = struct.pack(FORMAT['getkq'], REQUEST, OPCODES['getkq'], _bytesize(key), 0, 0, 0, _bytesize(key), 0, 0, key)
+        return self.connection.sendall(buffer)
 
     def metaget(self, keys):
         pass
@@ -207,84 +210,100 @@ class MCBinaryClient:
     def leaseGet(self, keys):
         pass
 
-    def _set(self, command, key, value, replicate=False, noreply=False, exptime=0, flags=0):
-        pass
-
     def leaseSet(self, key, value_token, exptime=0, is_stalestored=False):
         pass
 
     def set(self, key, value, replicate=False, noreply=False, exptime=0, flags=0):
-        pass
+        cas = 0 # TODO: cas support
+        buffer = struct.pack(FORMAT['set'], REQUEST, OPCODES['set'], _bytesize(key), 8, 0, 0, _bytesize(value) + _bytesize(key) + 8, 0, cas, flags, exptime, key, value)
+        return self.connection.sendall(buffer)
 
-    def add(self, key, value, replicate=False, noreply=False):
-        pass
+    def add(self, key, value, replicate=False, noreply=False, exptime=0, flags=0):
+        buffer = struct.pack(FORMAT['add'], REQUEST, OPCODES['add'],  _bytesize(key), 8, 0, 0, _bytesize(value) + _bytesize(key) + 8, 0, 0, flags, ttl, key, value)
+        return self.connection.sendall(buffer)
 
-    def replace(self, key, value, replicate=False, noreply=False):
-        pass
+    def replace(self, key, value, replicate=False, noreply=False, exptime=0, flags=0):
+        cas = 0 # TODO: cas support
+        buffer = struct.pack(FORMAT['replace'], REQUEST, OPCODES['replace'], _bytesize(key), 8, 0, 0, _bytesize(value) + _bytesize(key) + 8, 0, cas, flags, exptime, key, value)
+        return self.connection.sendall(buffer)
 
     def delete(self, key, exptime=None, noreply=False):
-        pass
+        cas = 0 # TODO: cas support
+        buffer = struct.pack(FORMAT['delete'], REQUEST, OPCODES['delete'], _bytesize(key), 0, 0, 0, _bytesize(key), 0, cas, key)
+        return self.connection.sendall(buffer)
 
     def touch(self, key, exptime, noreply=False):
-        pass
+        buffer = struct.pack(FORMAT['touch'], REQUEST, _bytesize(key), 4,0,0,_bytesize(key)+4,0,0,exptime,key)
+        return self.connection.sendall(buffer)
 
-    def _arith(self, cmd, key, value, noreply):
-        pass
+    def _arith(self, cmd, key, value, noreply, exptime):
+        buffer = struct.pack(FORMAT[cmd], REQUEST, OPCODES[cmd], _bytesize(key), 20, 0, 0, _bytesize(key) + 20, 0, 0, h, l, dh, dl, exptime, key)
+        return self.connection.sendall(buffer)
 
-    def incr(self, key, value=1, noreply=False):
-        pass
+    def incr(self, key, value=1, noreply=False, exptime=0):
+        return _arith('incr', key, value, noreply, exptime)
 
     def decr(self, key, value=1, noreply=False):
-        pass
+        return _arith('decr', key, value, noreply, exptime)
 
-    def _affix(self, cmd, key, value, noreply=False, flags=0, exptime=0):
+    def _affix(self, cmd, key, value, noreply, flags, exptime):
+        buffer = struct.pack(FORMAT[cmd], REQUEST, OPCODES[cmd], _bytesize(key), 0, 0, 0, _bytesize(value) + _bytesize(key), 0, 0, key, value)
         pass
 
     def append(self, key, value, noreply=False, flags=0, exptime=0):
-        pass
+        return _affix('append', key, value, noreply, flags, exptime)
 
     def prepend(self, key, value, noreply=False, flags=0, exptime=0):
-        pass
+        return _affix('prepend', key, value, noreply, flags, exptime)
 
     def cas(self, key, value, cas_token):
         pass
 
     def stats(self, spec=None):
-        pass
+        buffer = struct.pack(FORMAT['stats'], REQUEST, OPCODES['stats'], _bytesize(spec), 0, 0, 0, _bytesize(spec), 0, 0, spec)
+        return self.connection.sendall(buffer)
 
     def raw_stats(self, spec=None):
         pass
 
     def issue_command_and_read_all(self, command):
-        pass
+        raise NotImplementedError('not supported for binary protocol')
 
     def issue_command(self, command):
-        pass
+        raise NotImplementedError('not supported for binary protocol')
 
     def version(self):
-        pass
+        buffer = struct.pack(FORMAT['noop'], REQUEST, OPCODES['version'], 0, 0, 0, 0, 0, 0, 0)
+        return self.connection.sendall(buffer)
 
     def shutdown(self):
-        pass
+        raise NotImplementedError('TODO(maximebedard)')
 
     def flush_all(self, delay=None):
-        pass
+        buffer = struct.pack(FORMAT['flush'], REQUEST, OPCODES['flush'], 0, 4, 0, 0, 4, 0, 0, 0)
+        return self.connection.sendall(buffer)
 
-class MCAsciiClient:
-    def __init__(self, connection):
-        self.connection = connection
+    def _bytesize(str):
+        return len(str.encode('utf-8'))
 
-    def _get(self, cmd, keys, expect_cas, return_all_info):
+    def _split(n):
+        return (n >> 32, 0xFFFFFF & n)
+
+    def _read_response():
+        self.connection.read(24)
+
+class MCAsciiProtocol:
+    def _get(self, connection, cmd, keys, expect_cas, return_all_info):
         multi = True
         hadValue = False
         if not isinstance(keys, list):
             multi = False
             keys = [keys]
-        self.connection.sendall("{} {}\r\n".format(cmd, " ".join(keys)))
+        connection.sendall("{} {}\r\n".format(cmd, " ".join(keys)))
         res = dict([(key, None) for key in keys])
 
         while True:
-            l = self.connection.readline().strip()
+            l = connection.readline().strip()
             if l == 'END':
                 if multi:
                     return res
@@ -298,8 +317,8 @@ class MCAsciiClient:
                 f = int(parts[2])
                 n = int(parts[3])
                 assert k in keys
-                payload = self.fd.read(n)
-                self.fd.read(2)
+                payload = connection.read(n)
+                connection.read(2)
                 if return_all_info:
                     res[k] = dict({"key": k,
                                   "flags": f,
@@ -315,26 +334,26 @@ class MCAsciiClient:
                                     'multiget request')
                 return l
             else:
-                self.connection.connect()
+                connection.connect()
                 raise Exception('Unexpected response "%s" (%s)' % (l, keys))
 
-    def get(self, keys, return_all_info=False):
-        return self._get('get', keys, expect_cas=False, return_all_info=return_all_info)
+    def get(self, connection, keys, return_all_info=False):
+        return self._get(connection, 'get', keys, expect_cas=False, return_all_info=return_all_info)
 
-    def gets(self, keys):
-        return self._get('gets', keys, expect_cas=True, return_all_info=True)
+    def gets(self, connection, keys):
+        return self._get(connection, 'gets', keys, expect_cas=True, return_all_info=True)
 
-    def metaget(self, keys):
+    def metaget(self, connection, keys):
         ## FIXME: Not supporting multi-metaget yet
         #multi = True
         #if not instance(keys, list):
         #    multi = False
         #    keys = [keys]
         res = {}
-        self.connection.sendall("metaget %s\r\n" % keys)
+        connection.sendall("metaget %s\r\n" % keys)
 
         while True:
-            l = self.connection.readline().strip()
+            l = connection.readline().strip()
             if l.startswith("END"):
                 return res
             elif l.startswith("META"):
@@ -343,16 +362,16 @@ class MCAsciiClient:
                     res[meta_list[2 * i].strip(':')] = \
                         meta_list[2 * i + 1].strip(';')
 
-    def leaseGet(self, keys):
+    def leaseGet(self, connection, keys):
         multi = True
         if not isinstance(keys, list):
             multi = False
             keys = [keys]
-        self.connection.sendall("lease-get %s\r\n" % " ".join(keys))
+        connection.sendall("lease-get %s\r\n" % " ".join(keys))
         res = dict([(key, None) for key in keys])
 
         while True:
-            l = self.connection.readline().strip()
+            l = connection.readline().strip()
             if l == 'END':
                 if multi:
                     assert(len(res) == len(keys))
@@ -372,19 +391,19 @@ class MCAsciiClient:
                 res[k] = {"value": self.fd.read(int(n)),
                           "token": int(t)}
 
-    def _set(self, command, key, value, replicate=False, noreply=False, exptime=0, flags=0):
+    def _set(self, connection, command, key, value, replicate=False, noreply=False, exptime=0, flags=0):
         value = str(value)
         flags = flags | (1024 if replicate else 0)
-        self.connection.sendall("%s %s %d %d %d%s\r\n%s\r\n" %
+        connection.sendall("%s %s %d %d %d%s\r\n%s\r\n" %
                             (command, key, flags, exptime, len(value),
                             (' noreply' if noreply else ''), value))
         if noreply:
-            return self.connection.expectNoReply()
+            return connection.expectNoReply()
 
-        answer = self.connection.readline().strip()
+        answer = connection.readline().strip()
         if re.search('ERROR', answer):
             print(answer)
-            self.connection.connect()
+            connection.connect()
             return None
         return re.match("STORED", answer)
 
@@ -394,49 +413,49 @@ class MCAsciiClient:
         flags = 0
         cmd = "lease-set %s %d %d %d %d\r\n%s\r\n" % \
                 (key, token, flags, exptime, len(value), value)
-        self.connection.sendall(cmd)
+        connection.sendall(cmd)
 
-        answer = self.connection.readline().strip()
+        answer = connection.readline().strip()
         if re.search('ERROR', answer):
             print(answer)
-            self.connection.connect()
+            connection.connect()
             return None
         if is_stalestored:
             return re.match("STALE_STORED", answer)
         return re.match("STORED", answer)
 
-    def set(self, key, value, replicate=False, noreply=False, exptime=0, flags=0):
-        return self._set("set", key, value, replicate, noreply, exptime, flags)
+    def set(self, connection, key, value, replicate=False, noreply=False, exptime=0, flags=0):
+        return self._set(connection, "set", key, value, replicate, noreply, exptime, flags)
 
-    def add(self, key, value, replicate=False, noreply=False):
-        return self._set("add", key, value, replicate, noreply)
+    def add(self, connection, key, value, replicate=False, noreply=False):
+        return self._set(connection, "add", key, value, replicate, noreply)
 
-    def replace(self, key, value, replicate=False, noreply=False):
-        return self._set("replace", key, value, replicate, noreply)
+    def replace(self, connection, key, value, replicate=False, noreply=False):
+        return self._set(connection, "replace", key, value, replicate, noreply)
 
-    def delete(self, key, exptime=None, noreply=False):
+    def delete(self, connection, key, exptime=None, noreply=False):
         exptime_str = ''
         if exptime is not None:
             exptime_str = " {}".format(exptime)
-        self.connection.sendall("delete {}{}{}\r\n".format(
+        connection.sendall("delete {}{}{}\r\n".format(
                             key, exptime_str, (' noreply' if noreply else '')))
 
         if noreply:
-            return self.connection.expectNoReply()
+            return connection.expectNoReply()
 
-        answer = self.connection.readline()
+        answer = connection.readline()
 
         assert re.match("DELETED|NOT_FOUND|SERVER_ERROR", answer), answer
         return re.match("DELETED", answer)
 
-    def touch(self, key, exptime, noreply=False):
-        self.connection.sendall("touch {} {}{}\r\n".format(
+    def touch(self, connection, key, exptime, noreply=False):
+        connection.sendall("touch {} {}{}\r\n".format(
                             key, exptime, (' noreply' if noreply else '')))
 
         if noreply:
-            return self.connection.expectNoReply()
+            return connection.expectNoReply()
 
-        answer = self.connection.readline()
+        answer = connection.readline()
 
         if answer == "TOUCHED\r\n":
             return "TOUCHED"
@@ -448,33 +467,33 @@ class MCAsciiClient:
             return "CLIENT_ERROR"
         return None
 
-    def _arith(self, cmd, key, value, noreply):
-        self.connection.sendall("%s %s %d%s\r\n" %
+    def _arith(self, connection, cmd, key, value, noreply):
+        connection.sendall("%s %s %d%s\r\n" %
                             (cmd, key, value, (' noreply' if noreply else '')))
         if noreply:
-            return self.connection.expectNoReply()
+            return connection.expectNoReply()
 
-        answer = self.connection.readline()
+        answer = connection.readline()
         if re.match("NOT_FOUND", answer):
             return None
         else:
             return int(answer)
 
-    def incr(self, key, value=1, noreply=False):
+    def incr(self, connection, key, value=1, noreply=False):
         return self._arith('incr', key, value, noreply)
 
-    def decr(self, key, value=1, noreply=False):
+    def decr(self, connection, key, value=1, noreply=False):
         return self._arith('decr', key, value, noreply)
 
-    def _affix(self, cmd, key, value, noreply=False, flags=0, exptime=0):
-        self.connection.sendall("%s %s %d %d %d%s\r\n%s\r\n" %
+    def _affix(self, connection, cmd, key, value, noreply=False, flags=0, exptime=0):
+        connection.sendall("%s %s %d %d %d%s\r\n%s\r\n" %
                             (cmd, key, flags, exptime, len(value),
                             (' noreply' if noreply else ''), value))
 
         if noreply:
-            return self.connection.expectNoReply()
+            return connection.expectNoReply()
 
-        answer = self.connection.readline()
+        answer = connection.readline()
         if answer == "STORED\r\n":
             return "STORED"
         if answer == "NOT_STORED\r\n":
@@ -485,37 +504,37 @@ class MCAsciiClient:
             return "CLIENT_ERROR"
         return None
 
-    def append(self, key, value, noreply=False, flags=0, exptime=0):
-        return self._affix('append', key, value, noreply, flags, exptime)
+    def append(self, connection, key, value, noreply=False, flags=0, exptime=0):
+        return self._affix(connection, 'append', key, value, noreply, flags, exptime)
 
-    def prepend(self, key, value, noreply=False, flags=0, exptime=0):
-        return self._affix('prepend', key, value, noreply, flags, exptime)
+    def prepend(self, connection, key, value, noreply=False, flags=0, exptime=0):
+        return self._affix(connection, 'prepend', key, value, noreply, flags, exptime)
 
-    def cas(self, key, value, cas_token):
+    def cas(self, connection, key, value, cas_token):
         value = str(value)
-        self.connection.sendall("cas %s 0 0 %d %d\r\n%s\r\n" %
+        connection.sendall("cas %s 0 0 %d %d\r\n%s\r\n" %
                             (key, len(value), cas_token, value))
 
-        answer = self.connection.readline().strip()
+        answer = connection.readline().strip()
         if re.search('ERROR', answer):
             print(answer)
-            self.connection.connect()
+            connection.connect()
             return None
         return re.match("STORED", answer)
 
-    def stats(self, spec=None):
+    def stats(self, connection, spec=None):
         q = 'stats\r\n'
         if spec:
             q = 'stats {0}\r\n'.format(spec)
-        self.connection.sendall(q)
+        connection.sendall(q)
 
         s = {}
         l = None
-        if self.connection.no_response(5.0):
+        if connection.no_response(5.0):
             return None
 
         while l != 'END':
-            l = self.connection.readline().strip()
+            l = connection.readline().strip()
             if len(l) == 0:
                 return None
             a = l.split(None, 2)
@@ -524,65 +543,65 @@ class MCAsciiClient:
 
         return s
 
-    def raw_stats(self, spec=None):
+    def raw_stats(self, connection, spec=None):
         q = 'stats\r\n'
         if spec:
             q = 'stats {0}\r\n'.format(spec)
-        self.connection.sendall(q)
+        connection.sendall(q)
 
         s = []
         l = None
-        if self.connection.no_response(2.0):
+        if connection.no_response(2.0):
             return None
 
         while l != 'END':
-            l = self.connection.readline().strip()
+            l = connection.readline().strip()
             a = l.split(None, 1)
             if len(a) == 2:
                 s.append(a[1])
 
         return s
 
-    def issue_command_and_read_all(self, command):
-        self.connection.sendall(command)
+    def issue_command_and_read_all(self, connection, command):
+        connection.sendall(command)
 
-        if self.connection.no_response(2.0):
+        if connection.no_response(2.0):
             return None
 
         answer = ""
         l = None
         while l != 'END':
-            l = self.connection.readline().strip()
+            l = connection.readline().strip()
             # Handle error
             if not answer and 'ERROR' in l:
-                self.connection.connect()
+                connection.connect()
                 return l
             answer += l + "\r\n"
         return answer
 
-    def issue_command(self, command):
-        self.connection.sendall(command)
-        return self.connection.readline()
+    def issue_command(self, connection, command):
+        connection.sendall(command)
+        return connection.readline()
 
-    def version(self):
-        self.connection.sendall("version\r\n")
-        return self.connection.readline()
+    def version(self, connection):
+        connection.sendall("version\r\n")
+        return connection.readline()
 
-    def shutdown(self):
-        self.connection.sendall("shutdown\r\n")
-        return self.connection.readline()
+    def shutdown(self, connection):
+        connection.sendall("shutdown\r\n")
+        return connection.readline()
 
-    def flush_all(self, delay=None):
+    def flush_all(self, connection, delay=None):
         if delay is None:
-            self.connection.sendall("flush_all\r\n")
+            connection.sendall("flush_all\r\n")
         else:
-            self.connection.sendall("flush_all {}\r\n".format(delay))
-        return self.connection.readline().rstrip()
+            connection.sendall("flush_all {}\r\n".format(delay))
+        return connection.readline().rstrip()
 
 class MCProcess(ProcessBase):
     proc = None
 
-    def __init__(self, cmd, addr, base_dir=None, junk_fill=False):
+    def __init__(self, cmd, addr, base_dir=None, junk_fill=False, protocol=MCAsciiProtocol()):
         if cmd is not None and '-s' in cmd:
             if os.path.exists(addr):
                 raise Exception('file path already existed')
@@ -598,7 +617,7 @@ class MCProcess(ProcessBase):
         if base_dir is None:
             base_dir = BaseDirectory('MCProcess')
 
-        self.client = MCAsciiClient(self)
+        self.protocol = protocol
 
         ProcessBase.__init__(self, cmd, base_dir, junk_fill)
         self.deletes = 0
@@ -663,30 +682,87 @@ class MCProcess(ProcessBase):
             pass
         return True
 
-    def sendall(*args):
+    def sendall(self, *args):
         return self.socket.sendall(*args)
 
-    def readline():
+    def readline(self):
         return self.fd.readline()
 
-    def no_response(timeout):
+    def read(self, *args):
+        return self.fd.read(*args)
+
+    def no_response(self, timeout):
         fds = select.select([self.fd], [], [], timeout)
-        return len(fds[0]) == 0:
+        return len(fds[0]) == 0
+
+    def get(self, *args, **kwargs):
+        return self.protocol.get(self, *args, **kwargs)
+
+    def gets(self, *args, **kwargs):
+        return self.protocol.gets(self, *args, **kwargs)
+
+    def metaget(self, *args, **kwargs):
+        return self.protocol.metaget(self, *args, **kwargs)
+
+    def leaseGet(self, *args, **kwargs):
+        return self.protocol.leaseGet(self, *args, **kwargs)
+
+    def leaseSet(self, *args, **kwargs):
+        return self.protocol.leaseSet(self, *args, **kwargs)
+
+    def set(self, *args, **kwargs):
+        return self.protocol.set(self, *args, **kwargs)
+
+    def add(self, *args, **kwargs):
+        return self.protocol.add(self, *args, **kwargs)
+
+    def replace(self, *args, **kwargs):
+        return self.protocol.replace(self, *args, **kwargs)
 
     def delete(self, *args, **kwargs):
         self.deletes += 1
-        return self.client.delete(*args, **kwargs)
+        return self.protocol.delete(self, *args, **kwargs)
 
-    def issue_command_and_read_all(self, *args):
+    def touch(self, *args, **kwargs):
+        return self.protocol.touch(self, *args, **kwargs)
+
+    def incr(self, *args, **kwargs):
+        return self.protocol.incr(self, *args, **kwargs)
+
+    def decr(self, *args, **kwargs):
+        return self.protocol.decr(self, *args, **kwargs)
+
+    def append(self, *args, **kwargs):
+        return self.protocol.append(self, *args, **kwargs)
+
+    def prepend(self, *args, **kwargs):
+        return self.protocol.prepend(self, *args, **kwargs)
+
+    def cas(self, *args, **kwargs):
+        return self.protocol.cas(self, *args, **kwargs)
+
+    def stats(self, *args, **kwargs):
+        return self.protocol.stats(self, *args, **kwargs)
+
+    def raw_stats(self, *args, **kwargs):
+        return self.protocol.raw_stats(self, *args, **kwargs)
+
+    def issue_command_and_read_all(self, *args, **kwargs):
         self.others += 1
-        return self.client.issue_command_and_read_all(*args)
+        return self.protocol.issue_command_and_read_all(self, *args, **kwargs)
 
-    def issue_command(self, *args):
+    def issue_command(self, *args, **kwargs):
         self.others += 1
-        return self.client.issue_command(*args)
+        return self.protocol.issue_command(self, *args, **kwargs)
 
-    def __getattr__(self, attr):
-        return getattr(self.client, attr)
+    def version(self):
+        return self.protocol.version(self, *args, **kwargs)
+
+    def shutdown(self):
+        return self.protocol.shutdown(self, *args, **kwargs)
+
+    def flush_all(self, *args, **kwargs):
+        return self.protocol.flush_all(self, *args, **kwargs)
 
 def sub_port(s, substitute_ports, port_map):
     parts = s.split(':')
