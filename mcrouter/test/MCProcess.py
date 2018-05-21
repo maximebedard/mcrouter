@@ -120,6 +120,465 @@ class ProcessBase(object):
         if stderr:
             print("{} ({}) stdout:\n{}".format(self, self.cmd_line, stderr))
 
+class MCBinaryClient:
+    RESPONSE_CODES = {
+        0: 'No error',
+        1: 'Key not found',
+        2: 'Key exists',
+        3: 'Value too large',
+        4: 'Invalid arguments',
+        5: 'Item not stored',
+        6: 'Incr/decr on a non-numeric value',
+        7: 'The vbucket belongs to another server',
+        8: 'Authentication error',
+        9: 'Authentication continue',
+        0x20: 'Authentication required',
+        0x81: 'Unknown command',
+        0x82: 'Out of memory',
+        0x83: 'Not supported',
+        0x84: 'Internal error',
+        0x85: 'Busy',
+        0x86: 'Temporary failure',
+    }
+
+    OPCODES = {
+      'get': 0x00,
+      'set': 0x01,
+      'add': 0x02,
+      'replace': 0x03,
+      'delete': 0x04,
+      'incr': 0x05,
+      'decr': 0x06,
+      'flush': 0x08,
+      'noop': 0x0A,
+      'version': 0x0B,
+      'getkq': 0x0D,
+      'append': 0x0E,
+      'prepend': 0x0F,
+      'stat': 0x10,
+      'setq': 0x11,
+      'addq': 0x12,
+      'replaceq': 0x13,
+      'deleteq': 0x14,
+      'incrq': 0x15,
+      'decrq': 0x16,
+      'auth_negotiation': 0x20,
+      'auth_request': 0x21,
+      'auth_continue': 0x22,
+      'touch': 0x1C,
+    }
+
+    HEADER = 'CCnCCnNNQ'
+
+    OP_FORMAT = {
+      'get': 'a*',
+      'set': 'NNa*a*',
+      'add': 'NNa*a*',
+      'replace': 'NNa*a*',
+      'delete': 'a*',
+      'incr': 'NNNNNa*',
+      'decr': 'NNNNNa*',
+      'flush': 'N',
+      'noop': '',
+      'getkq': 'a*',
+      'version': '',
+      'stat': 'a*',
+      'append': 'a*a*',
+      'prepend': 'a*a*',
+      'auth_request': 'a*a*',
+      'auth_continue': 'a*a*',
+      'touch': 'Na*',
+    }
+
+    FORMAT = {k: HEADER + v for k, v in OP_FORMAT.items()}
+
+    def _get(self, cmd, keys, expect_cas, return_all_info):
+        pass
+
+    def get(self, keys, return_all_info=False):
+        pass
+
+    def gets(self, keys):
+        pass
+
+    def metaget(self, keys):
+        pass
+
+    def leaseGet(self, keys):
+        pass
+
+    def _set(self, command, key, value, replicate=False, noreply=False, exptime=0, flags=0):
+        pass
+
+    def leaseSet(self, key, value_token, exptime=0, is_stalestored=False):
+        pass
+
+    def set(self, key, value, replicate=False, noreply=False, exptime=0, flags=0):
+        pass
+
+    def add(self, key, value, replicate=False, noreply=False):
+        pass
+
+    def replace(self, key, value, replicate=False, noreply=False):
+        pass
+
+    def delete(self, key, exptime=None, noreply=False):
+        pass
+
+    def touch(self, key, exptime, noreply=False):
+        pass
+
+    def _arith(self, cmd, key, value, noreply):
+        pass
+
+    def incr(self, key, value=1, noreply=False):
+        pass
+
+    def decr(self, key, value=1, noreply=False):
+        pass
+
+    def _affix(self, cmd, key, value, noreply=False, flags=0, exptime=0):
+        pass
+
+    def append(self, key, value, noreply=False, flags=0, exptime=0):
+        pass
+
+    def prepend(self, key, value, noreply=False, flags=0, exptime=0):
+        pass
+
+    def cas(self, key, value, cas_token):
+        pass
+
+    def stats(self, spec=None):
+        pass
+
+    def raw_stats(self, spec=None):
+        pass
+
+    def issue_command_and_read_all(self, command):
+        pass
+
+    def issue_command(self, command):
+        pass
+
+    def version(self):
+        pass
+
+    def shutdown(self):
+        pass
+
+    def flush_all(self, delay=None):
+        pass
+
+class MCAsciiClient:
+    def __init__(self, connection):
+        self.connection = connection
+
+    def _get(self, cmd, keys, expect_cas, return_all_info):
+        multi = True
+        hadValue = False
+        if not isinstance(keys, list):
+            multi = False
+            keys = [keys]
+        self.connection.sendall("{} {}\r\n".format(cmd, " ".join(keys)))
+        res = dict([(key, None) for key in keys])
+
+        while True:
+            l = self.connection.readline().strip()
+            if l == 'END':
+                if multi:
+                    return res
+                else:
+                    assert len(res) == 1
+                    return res.values()[0]
+            elif l.startswith("VALUE"):
+                hadValue = True
+                parts = l.split()
+                k = parts[1]
+                f = int(parts[2])
+                n = int(parts[3])
+                assert k in keys
+                payload = self.fd.read(n)
+                self.fd.read(2)
+                if return_all_info:
+                    res[k] = dict({"key": k,
+                                  "flags": f,
+                                  "size": n,
+                                  "value": payload})
+                    if expect_cas:
+                        res[k]["cas"] = int(parts[4])
+                else:
+                    res[k] = payload
+            elif l.startswith("SERVER_ERROR"):
+                if hadValue:
+                    raise Exception('Received hit reply + SERVER_ERROR for '
+                                    'multiget request')
+                return l
+            else:
+                self.connection.connect()
+                raise Exception('Unexpected response "%s" (%s)' % (l, keys))
+
+    def get(self, keys, return_all_info=False):
+        return self._get('get', keys, expect_cas=False, return_all_info=return_all_info)
+
+    def gets(self, keys):
+        return self._get('gets', keys, expect_cas=True, return_all_info=True)
+
+    def metaget(self, keys):
+        ## FIXME: Not supporting multi-metaget yet
+        #multi = True
+        #if not instance(keys, list):
+        #    multi = False
+        #    keys = [keys]
+        res = {}
+        self.connection.sendall("metaget %s\r\n" % keys)
+
+        while True:
+            l = self.connection.readline().strip()
+            if l.startswith("END"):
+                return res
+            elif l.startswith("META"):
+                meta_list = l.split()
+                for i in range(1, len(meta_list) // 2):
+                    res[meta_list[2 * i].strip(':')] = \
+                        meta_list[2 * i + 1].strip(';')
+
+    def leaseGet(self, keys):
+        multi = True
+        if not isinstance(keys, list):
+            multi = False
+            keys = [keys]
+        self.connection.sendall("lease-get %s\r\n" % " ".join(keys))
+        res = dict([(key, None) for key in keys])
+
+        while True:
+            l = self.connection.readline().strip()
+            if l == 'END':
+                if multi:
+                    assert(len(res) == len(keys))
+                    return res
+                else:
+                    assert len(res) == 1
+                    return res.values()[0]
+            elif l.startswith("VALUE"):
+                v, k, f, n = l.split()
+                assert k in keys
+                res[k] = {"value": self.fd.read(int(n)),
+                          "token": None}
+                self.fd.read(2)
+            elif l.startswith("LVALUE"):
+                v, k, t, f, n = l.split()
+                assert k in keys
+                res[k] = {"value": self.fd.read(int(n)),
+                          "token": int(t)}
+
+    def _set(self, command, key, value, replicate=False, noreply=False, exptime=0, flags=0):
+        value = str(value)
+        flags = flags | (1024 if replicate else 0)
+        self.connection.sendall("%s %s %d %d %d%s\r\n%s\r\n" %
+                            (command, key, flags, exptime, len(value),
+                            (' noreply' if noreply else ''), value))
+        if noreply:
+            return self.connection.expectNoReply()
+
+        answer = self.connection.readline().strip()
+        if re.search('ERROR', answer):
+            print(answer)
+            self.connection.connect()
+            return None
+        return re.match("STORED", answer)
+
+    def leaseSet(self, key, value_token, exptime=0, is_stalestored=False):
+        value = str(value_token["value"])
+        token = int(value_token["token"])
+        flags = 0
+        cmd = "lease-set %s %d %d %d %d\r\n%s\r\n" % \
+                (key, token, flags, exptime, len(value), value)
+        self.connection.sendall(cmd)
+
+        answer = self.connection.readline().strip()
+        if re.search('ERROR', answer):
+            print(answer)
+            self.connection.connect()
+            return None
+        if is_stalestored:
+            return re.match("STALE_STORED", answer)
+        return re.match("STORED", answer)
+
+    def set(self, key, value, replicate=False, noreply=False, exptime=0, flags=0):
+        return self._set("set", key, value, replicate, noreply, exptime, flags)
+
+    def add(self, key, value, replicate=False, noreply=False):
+        return self._set("add", key, value, replicate, noreply)
+
+    def replace(self, key, value, replicate=False, noreply=False):
+        return self._set("replace", key, value, replicate, noreply)
+
+    def delete(self, key, exptime=None, noreply=False):
+        exptime_str = ''
+        if exptime is not None:
+            exptime_str = " {}".format(exptime)
+        self.connection.sendall("delete {}{}{}\r\n".format(
+                            key, exptime_str, (' noreply' if noreply else '')))
+
+        if noreply:
+            return self.connection.expectNoReply()
+
+        answer = self.connection.readline()
+
+        assert re.match("DELETED|NOT_FOUND|SERVER_ERROR", answer), answer
+        return re.match("DELETED", answer)
+
+    def touch(self, key, exptime, noreply=False):
+        self.connection.sendall("touch {} {}{}\r\n".format(
+                            key, exptime, (' noreply' if noreply else '')))
+
+        if noreply:
+            return self.connection.expectNoReply()
+
+        answer = self.connection.readline()
+
+        if answer == "TOUCHED\r\n":
+            return "TOUCHED"
+        if answer == "NOT_FOUND\r\n":
+            return "NOT_FOUND"
+        if re.match("^SERVER_ERROR", answer):
+            return "SERVER_ERROR"
+        if re.match("^CLIENT_ERROR", answer):
+            return "CLIENT_ERROR"
+        return None
+
+    def _arith(self, cmd, key, value, noreply):
+        self.connection.sendall("%s %s %d%s\r\n" %
+                            (cmd, key, value, (' noreply' if noreply else '')))
+        if noreply:
+            return self.connection.expectNoReply()
+
+        answer = self.connection.readline()
+        if re.match("NOT_FOUND", answer):
+            return None
+        else:
+            return int(answer)
+
+    def incr(self, key, value=1, noreply=False):
+        return self._arith('incr', key, value, noreply)
+
+    def decr(self, key, value=1, noreply=False):
+        return self._arith('decr', key, value, noreply)
+
+    def _affix(self, cmd, key, value, noreply=False, flags=0, exptime=0):
+        self.connection.sendall("%s %s %d %d %d%s\r\n%s\r\n" %
+                            (cmd, key, flags, exptime, len(value),
+                            (' noreply' if noreply else ''), value))
+
+        if noreply:
+            return self.connection.expectNoReply()
+
+        answer = self.connection.readline()
+        if answer == "STORED\r\n":
+            return "STORED"
+        if answer == "NOT_STORED\r\n":
+            return "NOT_STORED"
+        if re.match("^SERVER_ERROR", answer):
+            return "SERVER_ERROR"
+        if re.match("^CLIENT_ERROR", answer):
+            return "CLIENT_ERROR"
+        return None
+
+    def append(self, key, value, noreply=False, flags=0, exptime=0):
+        return self._affix('append', key, value, noreply, flags, exptime)
+
+    def prepend(self, key, value, noreply=False, flags=0, exptime=0):
+        return self._affix('prepend', key, value, noreply, flags, exptime)
+
+    def cas(self, key, value, cas_token):
+        value = str(value)
+        self.connection.sendall("cas %s 0 0 %d %d\r\n%s\r\n" %
+                            (key, len(value), cas_token, value))
+
+        answer = self.connection.readline().strip()
+        if re.search('ERROR', answer):
+            print(answer)
+            self.connection.connect()
+            return None
+        return re.match("STORED", answer)
+
+    def stats(self, spec=None):
+        q = 'stats\r\n'
+        if spec:
+            q = 'stats {0}\r\n'.format(spec)
+        self.connection.sendall(q)
+
+        s = {}
+        l = None
+        if self.connection.no_response(5.0):
+            return None
+
+        while l != 'END':
+            l = self.connection.readline().strip()
+            if len(l) == 0:
+                return None
+            a = l.split(None, 2)
+            if len(a) == 3:
+                s[a[1]] = a[2]
+
+        return s
+
+    def raw_stats(self, spec=None):
+        q = 'stats\r\n'
+        if spec:
+            q = 'stats {0}\r\n'.format(spec)
+        self.connection.sendall(q)
+
+        s = []
+        l = None
+        if self.connection.no_response(2.0):
+            return None
+
+        while l != 'END':
+            l = self.connection.readline().strip()
+            a = l.split(None, 1)
+            if len(a) == 2:
+                s.append(a[1])
+
+        return s
+
+    def issue_command_and_read_all(self, command):
+        self.connection.sendall(command)
+
+        if self.connection.no_response(2.0):
+            return None
+
+        answer = ""
+        l = None
+        while l != 'END':
+            l = self.connection.readline().strip()
+            # Handle error
+            if not answer and 'ERROR' in l:
+                self.connection.connect()
+                return l
+            answer += l + "\r\n"
+        return answer
+
+    def issue_command(self, command):
+        self.connection.sendall(command)
+        return self.connection.readline()
+
+    def version(self):
+        self.connection.sendall("version\r\n")
+        return self.connection.readline()
+
+    def shutdown(self):
+        self.connection.sendall("shutdown\r\n")
+        return self.connection.readline()
+
+    def flush_all(self, delay=None):
+        if delay is None:
+            self.connection.sendall("flush_all\r\n")
+        else:
+            self.connection.sendall("flush_all {}\r\n".format(delay))
+        return self.connection.readline().rstrip()
+
 class MCProcess(ProcessBase):
     proc = None
 
@@ -138,6 +597,8 @@ class MCProcess(ProcessBase):
 
         if base_dir is None:
             base_dir = BaseDirectory('MCProcess')
+
+        self.client = MCAsciiClient(self)
 
         ProcessBase.__init__(self, cmd, base_dir, junk_fill)
         self.deletes = 0
@@ -193,105 +654,6 @@ class MCProcess(ProcessBase):
 
         return proc
 
-    def _get(self, cmd, keys, expect_cas, return_all_info):
-        multi = True
-        hadValue = False
-        if not isinstance(keys, list):
-            multi = False
-            keys = [keys]
-        self.socket.sendall("{} {}\r\n".format(cmd, " ".join(keys)))
-        res = dict([(key, None) for key in keys])
-
-        while True:
-            l = self.fd.readline().strip()
-            if l == 'END':
-                if multi:
-                    return res
-                else:
-                    assert len(res) == 1
-                    return res.values()[0]
-            elif l.startswith("VALUE"):
-                hadValue = True
-                parts = l.split()
-                k = parts[1]
-                f = int(parts[2])
-                n = int(parts[3])
-                assert k in keys
-                payload = self.fd.read(n)
-                self.fd.read(2)
-                if return_all_info:
-                    res[k] = dict({"key": k,
-                                  "flags": f,
-                                  "size": n,
-                                  "value": payload})
-                    if expect_cas:
-                        res[k]["cas"] = int(parts[4])
-                else:
-                    res[k] = payload
-            elif l.startswith("SERVER_ERROR"):
-                if hadValue:
-                    raise Exception('Received hit reply + SERVER_ERROR for '
-                                    'multiget request')
-                return l
-            else:
-                self.connect()
-                raise Exception('Unexpected response "%s" (%s)' % (l, keys))
-
-    def get(self, keys, return_all_info=False):
-        return self._get('get', keys, expect_cas=False,
-                         return_all_info=return_all_info)
-
-    def gets(self, keys):
-        return self._get('gets', keys, expect_cas=True, return_all_info=True)
-
-    def metaget(self, keys):
-        ## FIXME: Not supporting multi-metaget yet
-        #multi = True
-        #if not instance(keys, list):
-        #    multi = False
-        #    keys = [keys]
-        res = {}
-        self.socket.sendall("metaget %s\r\n" % keys)
-
-        while True:
-            l = self.fd.readline().strip()
-            if l.startswith("END"):
-                return res
-            elif l.startswith("META"):
-                meta_list = l.split()
-                for i in range(1, len(meta_list) // 2):
-                    res[meta_list[2 * i].strip(':')] = \
-                        meta_list[2 * i + 1].strip(';')
-
-    def leaseGet(self, keys):
-        multi = True
-        if not isinstance(keys, list):
-            multi = False
-            keys = [keys]
-        self.socket.sendall("lease-get %s\r\n" % " ".join(keys))
-        res = dict([(key, None) for key in keys])
-
-        while True:
-            l = self.fd.readline().strip()
-            if l == 'END':
-                if multi:
-                    assert(len(res) == len(keys))
-                    return res
-                else:
-                    assert len(res) == 1
-                    return res.values()[0]
-            elif l.startswith("VALUE"):
-                v, k, f, n = l.split()
-                assert k in keys
-                res[k] = {"value": self.fd.read(int(n)),
-                          "token": None}
-                self.fd.read(2)
-            elif l.startswith("LVALUE"):
-                v, k, t, f, n = l.split()
-                assert k in keys
-                res[k] = {"value": self.fd.read(int(n)),
-                          "token": int(t)}
-
     def expectNoReply(self):
         self.socket.settimeout(0.5)
         try:
@@ -301,220 +663,30 @@ class MCProcess(ProcessBase):
             pass
         return True
 
-    def _set(self, command, key, value, replicate=False, noreply=False,
-             exptime=0, flags=0):
-        value = str(value)
-        flags = flags | (1024 if replicate else 0)
-        self.socket.sendall("%s %s %d %d %d%s\r\n%s\r\n" %
-                            (command, key, flags, exptime, len(value),
-                            (' noreply' if noreply else ''), value))
-        if noreply:
-            return self.expectNoReply()
+    def sendall(*args):
+        return self.socket.sendall(*args)
 
-        answer = self.fd.readline().strip()
-        if re.search('ERROR', answer):
-            print(answer)
-            self.connect()
-            return None
-        return re.match("STORED", answer)
+    def readline():
+        return self.fd.readline()
 
-    def leaseSet(self, key, value_token, exptime=0, is_stalestored=False):
-        value = str(value_token["value"])
-        token = int(value_token["token"])
-        flags = 0
-        cmd = "lease-set %s %d %d %d %d\r\n%s\r\n" % \
-                (key, token, flags, exptime, len(value), value)
-        self.socket.sendall(cmd)
+    def no_response(timeout):
+        fds = select.select([self.fd], [], [], timeout)
+        return len(fds[0]) == 0:
 
-        answer = self.fd.readline().strip()
-        if re.search('ERROR', answer):
-            print(answer)
-            self.connect()
-            return None
-        if is_stalestored:
-            return re.match("STALE_STORED", answer)
-        return re.match("STORED", answer)
-
-    def set(self, key, value, replicate=False, noreply=False, exptime=0,
-            flags=0):
-        return self._set("set", key, value, replicate, noreply, exptime, flags)
-
-    def add(self, key, value, replicate=False, noreply=False):
-        return self._set("add", key, value, replicate, noreply)
-
-    def replace(self, key, value, replicate=False, noreply=False):
-        return self._set("replace", key, value, replicate, noreply)
-
-    def delete(self, key, exptime=None, noreply=False):
-        exptime_str = ''
-        if exptime is not None:
-            exptime_str = " {}".format(exptime)
-        self.socket.sendall("delete {}{}{}\r\n".format(
-                            key, exptime_str, (' noreply' if noreply else '')))
+    def delete(self, *args, **kwargs):
         self.deletes += 1
+        return self.client.delete(*args, **kwargs)
 
-        if noreply:
-            return self.expectNoReply()
-
-        answer = self.fd.readline()
-
-        assert re.match("DELETED|NOT_FOUND|SERVER_ERROR", answer), answer
-        return re.match("DELETED", answer)
-
-    def touch(self, key, exptime, noreply=False):
-        self.socket.sendall("touch {} {}{}\r\n".format(
-                            key, exptime, (' noreply' if noreply else '')))
-
-        if noreply:
-            return self.expectNoReply()
-
-        answer = self.fd.readline()
-
-        if answer == "TOUCHED\r\n":
-            return "TOUCHED"
-        if answer == "NOT_FOUND\r\n":
-            return "NOT_FOUND"
-        if re.match("^SERVER_ERROR", answer):
-            return "SERVER_ERROR"
-        if re.match("^CLIENT_ERROR", answer):
-            return "CLIENT_ERROR"
-        return None
-
-    def _arith(self, cmd, key, value, noreply):
-        self.socket.sendall("%s %s %d%s\r\n" %
-                            (cmd, key, value, (' noreply' if noreply else '')))
-        if noreply:
-            return self.expectNoReply()
-
-        answer = self.fd.readline()
-        if re.match("NOT_FOUND", answer):
-            return None
-        else:
-            return int(answer)
-
-    def incr(self, key, value=1, noreply=False):
-        return self._arith('incr', key, value, noreply)
-
-    def decr(self, key, value=1, noreply=False):
-        return self._arith('decr', key, value, noreply)
-
-    def _affix(self, cmd, key, value, noreply=False, flags=0, exptime=0):
-        self.socket.sendall("%s %s %d %d %d%s\r\n%s\r\n" %
-                            (cmd, key, flags, exptime, len(value),
-                            (' noreply' if noreply else ''), value))
-
-        if noreply:
-            return self.expectNoReply()
-
-        answer = self.fd.readline()
-        if answer == "STORED\r\n":
-            return "STORED"
-        if answer == "NOT_STORED\r\n":
-            return "NOT_STORED"
-        if re.match("^SERVER_ERROR", answer):
-            return "SERVER_ERROR"
-        if re.match("^CLIENT_ERROR", answer):
-            return "CLIENT_ERROR"
-        return None
-
-    def append(self, key, value, noreply=False, flags=0, exptime=0):
-        return self._affix('append', key, value, noreply, flags, exptime)
-
-    def prepend(self, key, value, noreply=False, flags=0, exptime=0):
-        return self._affix('prepend', key, value, noreply, flags, exptime)
-
-    def cas(self, key, value, cas_token):
-        value = str(value)
-        self.socket.sendall("cas %s 0 0 %d %d\r\n%s\r\n" %
-                            (key, len(value), cas_token, value))
-
-        answer = self.fd.readline().strip()
-        if re.search('ERROR', answer):
-            print(answer)
-            self.connect()
-            return None
-        return re.match("STORED", answer)
-
-    def stats(self, spec=None):
-        q = 'stats\r\n'
-        if spec:
-            q = 'stats {0}\r\n'.format(spec)
-        self.socket.sendall(q)
-
-        s = {}
-        l = None
-        fds = select.select([self.fd], [], [], 5.0)
-        if len(fds[0]) == 0:
-            return None
-        while l != 'END':
-            l = self.fd.readline().strip()
-            if len(l) == 0:
-                return None
-            a = l.split(None, 2)
-            if len(a) == 3:
-                s[a[1]] = a[2]
-
-        return s
-
-    def raw_stats(self, spec=None):
-        q = 'stats\r\n'
-        if spec:
-            q = 'stats {0}\r\n'.format(spec)
-        self.socket.sendall(q)
-
-        s = []
-        l = None
-        fds = select.select([self.fd], [], [], 2.0)
-        if len(fds[0]) == 0:
-            return None
-        while l != 'END':
-            l = self.fd.readline().strip()
-            a = l.split(None, 1)
-            if len(a) == 2:
-                s.append(a[1])
-
-        return s
-
-    def issue_command_and_read_all(self, command):
+    def issue_command_and_read_all(self, *args):
         self.others += 1
-        self.socket.sendall(command)
+        return self.client.issue_command_and_read_all(*args)
 
-        # Handle no response
-        fds = select.select([self.fd], [], [], 2.0)
-        if len(fds[0]) == 0:
-            return None
-
-        answer = ""
-        l = None
-        while l != 'END':
-            l = self.fd.readline().strip()
-            # Handle error
-            if not answer and 'ERROR' in l:
-                self.connect()
-                return l
-            answer += l + "\r\n"
-        return answer
-
-    def issue_command(self, command):
+    def issue_command(self, *args):
         self.others += 1
-        self.socket.sendall(command)
-        answer = self.fd.readline()
-        return answer
+        return self.client.issue_command(*args)
 
-    def version(self):
-        self.socket.sendall("version\r\n")
-        return self.fd.readline()
-
-    def shutdown(self):
-        self.socket.sendall("shutdown\r\n")
-        return self.fd.readline()
-
-    def flush_all(self, delay=None):
-        if delay is None:
-            self.socket.sendall("flush_all\r\n")
-        else:
-            self.socket.sendall("flush_all {}\r\n".format(delay))
-        return self.fd.readline().rstrip()
+    def __getattr__(self, attr):
+        return getattr(self.client, attr)
 
 def sub_port(s, substitute_ports, port_map):
     parts = s.split(':')

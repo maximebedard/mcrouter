@@ -152,6 +152,8 @@ McRouteHandleProvider<RouterInfo>::makePool(
       auto str = parseString(*jProtocol, "protocol");
       if (equalStr("ascii", str, folly::AsciiCaseInsensitive())) {
         protocol = mc_ascii_protocol;
+      } else if (equalStr("binary", str, folly::AsciiCaseInsensitive())) {
+        protocol = mc_binary_protocol;
       } else if (equalStr("caret", str, folly::AsciiCaseInsensitive())) {
         protocol = mc_caret_protocol;
       } else if (equalStr("umbrella", str, folly::AsciiCaseInsensitive())) {

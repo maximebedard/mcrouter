@@ -52,6 +52,9 @@ class TestMcrouterRoutingPrefixAscii(McrouterTestCase):
 class TestMcrouterRoutingPrefixUmbrella(TestMcrouterRoutingPrefixAscii):
     config = './mcrouter/test/routing_prefix_test_umbrella.json'
 
+class TestMcrouterRoutingPrefixBinary(TestMcrouterRoutingPrefixAscii):
+    config = './mcrouter/test/routing_prefix_test_binary.json'
+
 class TestMcrouterRoutingPrefixOldNaming(TestMcrouterRoutingPrefixAscii):
     config = './mcrouter/test/routing_prefix_test_old_naming.json'
 
