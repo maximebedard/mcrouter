@@ -145,8 +145,6 @@ class RequestCommon {
   static constexpr size_t kTraceIdSize = 11;
   // bool quiet_{false};
   // bool returnKey_{false};
-};
-
 
   const folly::IOBuf* serializedBuffer_{nullptr};
 
@@ -171,5 +169,7 @@ class RequestCommon {
       facebook::memcache::Ref<mc_fbtrace_info_t, McFbtraceRefPolicy>;
   McFbtraceRef fbtraceInfo_;
 #endif
+
+};
 
 } // carbon

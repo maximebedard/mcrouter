@@ -10,7 +10,7 @@ from __future__ import unicode_literals
 
 import time
 
-from mcrouter.test.MCProcess import Memcached
+from mcrouter.test.MCProcess import Memcached, MCBinaryProtocol
 from mcrouter.test.McrouterTestCase import McrouterTestCase
 
 class TestDevNull(McrouterTestCase):

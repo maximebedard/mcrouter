@@ -12,6 +12,7 @@
 #include "mcrouter/lib/debug/ConnectionFifo.h"
 #include "mcrouter/lib/mc/protocol.h"
 #include "mcrouter/lib/network/UmbrellaProtocol.h"
+#include <iostream>
 
 namespace facebook {
 namespace memcache {
@@ -20,6 +21,7 @@ namespace memcache {
  * Determine the protocol by looking at the first byte
  */
 inline mc_protocol_t determineProtocol(uint8_t firstByte) {
+  LOG(INFO) << "LOL";
   switch (firstByte) {
     case kCaretMagicByte:
       return mc_caret_protocol;
