@@ -8,9 +8,22 @@
 #include "sfrlock.h"
 
 #include <limits.h>
-#include <linux/futex.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+
+#ifdef __APPLE__
+  #define fbi_futex_wait(p, val)
+  #define fbi_futex_wake(p, n)
+#else
+  #include <linux/futex.h>
+  #define fbi_futex_wait(p, val)                                          \
+    syscall(SYS_futex, (p), FUTEX_WAIT | FUTEX_PRIVATE_FLAG, (val),       \
+            NULL, NULL, 0);
+
+  #define fbi_futex_wake(p, n)                                            \
+    syscall(SYS_futex, (p), FUTEX_WAKE | FUTEX_PRIVATE_FLAG, (n),         \
+            NULL, NULL, 0);
+#endif
 
 #include "mcrouter/lib/fbi/util.h"
 
@@ -31,8 +44,7 @@ void sfrlock_rdlock_contended(sfrlock_t *l) {
 
     /* Wait for the write lock to be released. */
     while (oldv & SFRLOCK_WRITE_LOCKED) {
-      syscall(SYS_futex, &l->value, FUTEX_WAIT | FUTEX_PRIVATE_FLAG, oldv,
-              NULL, NULL, 0);
+      fbi_futex_wait(&l->value, oldv);
       oldv = ACCESS_ONCE(l->value);
     }
 
@@ -44,8 +56,7 @@ void sfrlock_rdlock_contended(sfrlock_t *l) {
 }
 
 void sfrlock_wake_waiters(sfrlock_t *l) {
-  syscall(SYS_futex, &l->value, FUTEX_WAKE | FUTEX_PRIVATE_FLAG, INT_MAX,
-          NULL, NULL, 0);
+  fbi_futex_wake(&l->value, INT_MAX);
 }
 
 void sfrlock_wrlock_contended(sfrlock_t *l) {
@@ -66,8 +77,7 @@ void sfrlock_wrlock_contended(sfrlock_t *l) {
 
     /* Wait for the write lock to be released. */
     while (oldv & SFRLOCK_WRITE_LOCKED) {
-      syscall(SYS_futex, &l->value, FUTEX_WAIT | FUTEX_PRIVATE_FLAG, oldv,
-              NULL, NULL, 0);
+      fbi_futex_wait(&l->value, oldv);
       oldv = ACCESS_ONCE(l->value);
     }
 
@@ -82,8 +92,7 @@ void sfrlock_wrlock_contended(sfrlock_t *l) {
    */
   oldv |= SFRLOCK_WRITE_LOCKED;
   while (oldv != SFRLOCK_WRITE_LOCKED) {
-    syscall(SYS_futex, &l->value, FUTEX_WAIT | FUTEX_PRIVATE_FLAG, oldv,
-            NULL, NULL, 0);
+    fbi_futex_wait(&l->value, oldv);
     oldv = ACCESS_ONCE(l->value);
   }
 

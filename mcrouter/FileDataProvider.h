@@ -8,8 +8,7 @@
 #pragma once
 
 #include <string>
-
-#include <folly/File.h>
+#include <mutex>
 
 namespace facebook {
 namespace memcache {
@@ -44,15 +43,15 @@ class FileDataProvider {
   bool hasUpdate();
 
  private:
-  const std::string filePath_;
-  folly::File inotify_;
+  struct Context {
+    std::mutex mutex_;
+    bool has_update_;
+  };
 
-  /**
-   * Updates the inotify watch.
-   * Provides strong guarantee: if exception is thrown, state won't change.
-   */
-  void updateInotifyWatch();
+  Context ctx_;
+  const std::string filePath_;
 };
+
 }
 }
 } // facebook::memcache::mcrouter

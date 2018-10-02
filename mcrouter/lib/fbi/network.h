@@ -20,6 +20,16 @@ typedef struct {
   uint16_t strmaxlen;
 } fbi_family_info_t;
 
+#if defined(__APPLE__) || defined(__darwin__)
+/* OSX seems not to define these. */
+  #ifndef s6_addr16
+    #define s6_addr16 __u6_addr.__u6_addr16
+  #endif
+  #ifndef s6_addr32
+    #define s6_addr32 __u6_addr.__u6_addr32
+  #endif
+#endif
+
 static inline bool ipv4_addr_loopback(const struct in_addr* a) {
   return a->s_addr == htonl(INADDR_LOOPBACK);
 }

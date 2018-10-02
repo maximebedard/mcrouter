@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <sys/resource.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #include <chrono>
 #include <condition_variable>
@@ -47,7 +48,8 @@ class ShutdownPipe : public folly::EventHandler {
  public:
   ShutdownPipe(AsyncMcServer& server, folly::EventBase& evb)
       : folly::EventHandler(&evb), server_(server) {
-    fd_ = eventfd(0, 0);
+    int pipefd[2];
+    fd_ = pipe(pipefd);
     if (UNLIKELY(fd_ == -1)) {
       throw std::runtime_error(
           "Unexpected file descriptor (-1) in ShutdownPipe");

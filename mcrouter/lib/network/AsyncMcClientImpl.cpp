@@ -920,6 +920,17 @@ void AsyncMcClientImpl::updateWriteTimeout(std::chrono::milliseconds timeout) {
   });
 }
 
+#if defined(__APPLE__) || defined(__darwin__)
+  /* OSX seems to use tcp_connection_info instead. */
+  #ifndef tcp_info
+    #define tcp_info tcp_connection_info
+  #endif
+
+  #ifndef TCP_INFO
+    #define TCP_INFO TCP_CONNECTION_INFO
+  #endif
+#endif
+
 double AsyncMcClientImpl::getRetransmissionInfo() {
   if (socket_ != nullptr) {
     struct tcp_info tcpinfo;
@@ -932,10 +943,17 @@ double AsyncMcClientImpl::getRetransmissionInfo() {
       if (totalKBytes == lastKBytes_) {
         return 0.0;
       }
-      const auto retransPerKByte = (tcpinfo.tcpi_total_retrans - lastRetrans_) /
+
+      #if defined(__APPLE__) || defined(__darwin__)
+        const auto total_retrans_bytes = tcpinfo.tcpi_txretransmitbytes;
+      #else
+        const auto total_retrans_bytes = tcpinfo.tcpi_total_retrans;
+      #endif
+
+      const auto retransPerKByte = (total_retrans_bytes - lastRetrans_) /
           (double)(totalKBytes - lastKBytes_);
       lastKBytes_ = totalKBytes;
-      lastRetrans_ = tcpinfo.tcpi_total_retrans;
+      lastRetrans_ = total_retrans_bytes;
       return retransPerKByte;
     }
   }
