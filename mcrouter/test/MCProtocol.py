@@ -73,7 +73,7 @@ OP_FORMAT = {
 }
 
 HEADER = ">BBHBBHIIL"
-CAS_HEADER = "@4CCnNNQ"
+CAS_HEADER = ">xxxxBBHIIL"
 # NORMAL_HEADER = '@4CCnN'
 # KV_HEADER = '@2n@6nN@16Q'
 
@@ -107,6 +107,7 @@ class MCBinaryProtocol:
         value_size = _bytesize(value)
         # import pdb; pdb.set_trace()
         buffer = struct.pack(HEADER + "II", REQUEST, OPCODES['set'], key_size, 8, 0, 0, value_size + key_size + 8, 0, cas, flags, exptime) + key.encode("utf-8") + value.encode("utf-8")
+        print(" ".join("{:02x}".format(ord(c)) for c in buffer))
         connection.sendall(buffer)
         return self._cas_response(connection)
 
@@ -186,6 +187,7 @@ class MCBinaryProtocol:
         if not header:
             raise Exception("invalid header {}".format(header.encode("utf-8")))
 
+        print("header: {}".format(header))
         (_, _, status, count, _, cas) = struct.unpack(CAS_HEADER, header)
         if count > 0:
             connection.read(count) # skip potential data that we don't care about

@@ -222,6 +222,7 @@ bool McParser::readDataAvailable(size_t len) {
       outOfOrder_ = false;
     } else {
       assert(
+          protocol_ == mc_binary_protocol || 
           protocol_ == mc_umbrella_protocol_DONOTUSE ||
           protocol_ == mc_caret_protocol);
       outOfOrder_ = true;

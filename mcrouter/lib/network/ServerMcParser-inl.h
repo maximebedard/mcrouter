@@ -129,6 +129,7 @@ void ServerMcParser<Callback>::handleAscii(folly::IOBuf& readBuffer) {
   // Note: McParser never chains IOBufs.
   auto result = asciiParser_.consume(readBuffer);
 
+  LOG(INFO) << "lol2";
   if (result == McAsciiParserBase::State::ERROR) {
     // Note: we could include actual parsing error instead of
     // "malformed request" (e.g. asciiParser_.getErrorDescription()).
@@ -138,6 +139,8 @@ void ServerMcParser<Callback>::handleAscii(folly::IOBuf& readBuffer) {
 
 template <class Callback>
 void ServerMcParser<Callback>::handleBinary(folly::IOBuf& readBuffer) {
+  
+  LOG(INFO) << "lol1";  
   if (UNLIKELY(parser_.protocol() != mc_binary_protocol)) {
     std::string reason(folly::sformat(
         "Expected {} protocol, but received binary!",
