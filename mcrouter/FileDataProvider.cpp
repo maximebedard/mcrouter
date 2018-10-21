@@ -7,8 +7,6 @@
  */
 #include "FileDataProvider.h"
 
-#include <libfswatch/c++/monitor.hpp>
-
 #include <boost/filesystem/convenience.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
@@ -31,17 +29,17 @@ FileDataProvider::FileDataProvider(std::string filePath)
     throw std::runtime_error("File path empty");
   }
 
-  std::vector<std::string> paths { filePath_ };
-  auto monitor_ = fsw::monitor_factory::create_monitor(
+  monitor_.reset(fsw::monitor_factory::create_monitor(
     fsw_monitor_type::system_default_monitor_type,
-    paths,
+    std::vector<std::string> { filePath_ },
     [](const std::vector<fsw::event> &events, void *context){
       auto c = static_cast<FileDataProvider::Context*>(context);
       std::lock_guard<std::mutex> lg(c->mutex_);
       c->has_update_ = true;
     },
     &ctx_
-  );
+  ));
+  monitor_->set_latency(1);
   monitor_->set_follow_symlinks(true);
   monitor_->start();
 }

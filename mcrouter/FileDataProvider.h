@@ -9,6 +9,7 @@
 
 #include <string>
 #include <mutex>
+#include <libfswatch/c++/monitor.hpp>
 
 namespace facebook {
 namespace memcache {
@@ -47,8 +48,10 @@ class FileDataProvider {
     std::mutex mutex_;
     bool has_update_;
   };
-
   Context ctx_;
+
+  std::unique_ptr<fsw::monitor> monitor_;
+
   const std::string filePath_;
 };
 
