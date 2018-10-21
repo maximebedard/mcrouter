@@ -920,7 +920,7 @@ void AsyncMcClientImpl::updateWriteTimeout(std::chrono::milliseconds timeout) {
   });
 }
 
-#if defined(__APPLE__) || defined(__darwin__)
+#ifdef __APPLE__
   /* OSX seems to use tcp_connection_info instead. */
   #ifndef tcp_info
     #define tcp_info tcp_connection_info
@@ -944,7 +944,7 @@ double AsyncMcClientImpl::getRetransmissionInfo() {
         return 0.0;
       }
 
-      #if defined(__APPLE__) || defined(__darwin__)
+      #ifdef __APPLE__
         const auto total_retrans_bytes = tcpinfo.tcpi_txretransmitbytes;
       #else
         const auto total_retrans_bytes = tcpinfo.tcpi_total_retrans;
