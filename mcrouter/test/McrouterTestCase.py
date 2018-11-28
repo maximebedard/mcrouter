@@ -11,7 +11,7 @@ import unittest
 import time
 
 from mcrouter.test.MCProcess import Mcrouter, Memcached, MockMemcached
-
+from mcrouter.test.MCProtocol import MCAsciiProtocol
 
 class McrouterTestCase(unittest.TestCase):
     def __init__(self, *args, **kwargs):
@@ -41,7 +41,7 @@ class McrouterTestCase(unittest.TestCase):
         return server
 
     def add_mcrouter(self, config, route=None, extra_args=[], replace_map=None,
-                     bg_mcrouter=False):
+                     bg_mcrouter=False, protocol=MCAsciiProtocol()):
         self.ensureClassVariables()
         substitute_ports = (self.open_ports
                             if 'port_map' not in self.__dict__
@@ -51,6 +51,7 @@ class McrouterTestCase(unittest.TestCase):
                             substitute_config_ports=substitute_ports,
                             default_route=route,
                             extra_args=extra_args,
+                            protocol=protocol,
                             replace_map=replace_map)
         mcrouter.ensure_connected()
 

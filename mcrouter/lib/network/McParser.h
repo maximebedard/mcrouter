@@ -21,20 +21,15 @@ namespace memcache {
  * Determine the protocol by looking at the first byte
  */
 inline mc_protocol_t determineProtocol(uint8_t firstByte) {
-  LOG(INFO) << "lol" << unsigned(firstByte);
   switch (firstByte) {
     case kCaretMagicByte:
-        LOG(INFO) << "caret";
         return mc_caret_protocol;
     case ENTRY_LIST_MAGIC_BYTE:
-        LOG(INFO) << "umbrella";
       return mc_umbrella_protocol_DONOTUSE;
     case 0x80:
     case 0x81:
-      LOG(INFO) << "binary";
       return mc_binary_protocol;
     default:
-      LOG(INFO) << "ascii";
       return mc_ascii_protocol;
   }
 }

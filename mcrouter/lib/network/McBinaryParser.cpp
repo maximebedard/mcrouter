@@ -20,45 +20,51 @@ namespace memcache {
 McServerBinaryParser::State McServerBinaryParser::consume(folly::IOBuf& buffer) {
   assert(state_ != State::ERROR);
   assert(state_ != State::COMPLETE);
-
+  
   uint64_t avaiBytes = buffer.length();
   const char *p_ = reinterpret_cast<const char*>(buffer.data());
 
   if (state_ == State::UNINIT) {
+    LOG(INFO) << "bin/uninit";
     header_        = nullptr;
     sectionLength_ = HeaderLength;
     sectionStart_  = p_;
     state_         = State::PARTIAL_HEADER;
-  } else {
+  }
     while (state_ != State::ERROR && state_ != State::COMPLETE
       && avaiBytes >= sectionLength_) {
+      LOG(INFO) << "i";
       switch (state_) {
         case State::PARTIAL_HEADER:
           if (!parseHeader(p_)) {
+            LOG(INFO) << "error";
             state_ = State::ERROR;
           } else {
             sectionStart_ += sectionLength_;
             sectionLength_ = getExtrasLength();
             state_ = State::PARTIAL_EXTRA;
           }
+          LOG(INFO) << "header";
           break;
 
         case State::PARTIAL_EXTRA:
           appendKeyPiece(
-            buffer, currentValue_,
+            buffer, currentExtras_,
             sectionStart_, sectionStart_ + sectionLength_);
           sectionStart_ += sectionLength_;
           sectionLength_ = getKeyLength();
           state_ = State::PARTIAL_KEY;
+          LOG(INFO) << "extra";
           break;
 
         case State::PARTIAL_KEY:
           appendKeyPiece(
-            buffer, currentValue_,
+            buffer, currentKey_,
             sectionStart_, sectionStart_ + sectionLength_);
           sectionStart_ += sectionLength_;
           sectionLength_ = getValueLength();
           state_ = State::PARTIAL_VALUE;
+          LOG(INFO) << "key";
           break;
 
         case State::PARTIAL_VALUE:
@@ -67,6 +73,8 @@ McServerBinaryParser::State McServerBinaryParser::consume(folly::IOBuf& buffer) 
             sectionStart_, sectionStart_ + sectionLength_);
           sectionStart_ += sectionLength_;
           state_ = State::COMPLETE;
+          
+          LOG(INFO) << "value";
           (this->*consumer_)();
           break;
 
@@ -74,7 +82,7 @@ McServerBinaryParser::State McServerBinaryParser::consume(folly::IOBuf& buffer) 
           CHECK(false);
       }
     }
-  }
+  
   buffer.trimStart(sectionStart_ - p_);
 
   return state_;
@@ -90,6 +98,7 @@ bool McServerBinaryParser::parseHeader(const char * bytes) {
   // TODO validate command constraint (i.e. no extras, no value)
   switch (getOpCode()) {
     case mc_opcode_set:
+      LOG(INFO) << "in set";
       currentMessage_.emplace<McSetRequest>();
       consumer_ = &McServerBinaryParser::consumeSetLike<McSetRequest, false>;
       return true;
@@ -242,6 +251,8 @@ void McServerBinaryParser::consumeSetLike() {
   auto& message     = currentMessage_.get<Request>();
   message.key()     = std::move(currentKey_);
   message.exptime() = ntohl(extras->exptime);
+
+  LOG(INFO) << "set key:" << message.key().fullKey();
   // message.quiet()   = quiet;
   callback_->onRequest(std::move(message));
 }

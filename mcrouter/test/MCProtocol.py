@@ -72,7 +72,7 @@ OP_FORMAT = {
     # 'touch': 'Na*',
 }
 
-HEADER = ">BBHBBHIIL"
+HEADER = ">BBHBBHIIQ"
 CAS_HEADER = ">xxxxBBHIIL"
 # NORMAL_HEADER = '@4CCnN'
 # KV_HEADER = '@2n@6nN@16Q'
@@ -105,11 +105,10 @@ class MCBinaryProtocol:
         cas = 0 # TODO: cas support
         key_size = _bytesize(key)
         value_size = _bytesize(value)
-        # import pdb; pdb.set_trace()
         buffer = struct.pack(HEADER + "II", REQUEST, OPCODES['set'], key_size, 8, 0, 0, value_size + key_size + 8, 0, cas, flags, exptime) + key.encode("utf-8") + value.encode("utf-8")
-        print(" ".join("{:02x}".format(ord(c)) for c in buffer))
+	print(" ".join("{:02x}".format(ord(c)) for c in buffer))
         connection.sendall(buffer)
-        return self._cas_response(connection)
+	return self._cas_response(connection)
 
     def add(self, connection, key, value, replicate=False, noreply=False, exptime=0, flags=0):
         key_size = _bytesize(key)
@@ -184,6 +183,7 @@ class MCBinaryProtocol:
 
     def _cas_response(self, connection):
         header = connection.read(24)
+	print("header:" + " ".join("{:02x}".format(ord(c)) for c in header))
         if not header:
             raise Exception("invalid header {}".format(header.encode("utf-8")))
 

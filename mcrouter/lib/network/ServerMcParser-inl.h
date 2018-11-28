@@ -138,9 +138,7 @@ void ServerMcParser<Callback>::handleAscii(folly::IOBuf& readBuffer) {
 }
 
 template <class Callback>
-void ServerMcParser<Callback>::handleBinary(folly::IOBuf& readBuffer) {
-  
-  LOG(INFO) << "lol1";  
+void ServerMcParser<Callback>::handleBinary(folly::IOBuf& readBuffer) { 
   if (UNLIKELY(parser_.protocol() != mc_binary_protocol)) {
     std::string reason(folly::sformat(
         "Expected {} protocol, but received binary!",

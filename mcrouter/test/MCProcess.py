@@ -44,8 +44,9 @@ class ProcessBase(object):
             base_dir = BaseDirectory('ProcessBase')
         self.base_dir = base_dir
         self.stdout = os.path.join(base_dir.path, 'stdout')
-        self.stderr = os.path.join(base_dir.path, 'stderr')
-        stdout = open(self.stdout, 'w')
+        self.stderr = os.path.join(base_dir.path, 'stderr') 
+        print(os.path.join(base_dir.path, 'mcrouter.log'))
+	stdout = open(self.stdout, 'w')
         stderr = open(self.stderr, 'w')
 
         self.cmd_line = 'no command line'
@@ -371,7 +372,7 @@ def create_listen_socket():
     return listen_sock
 
 class McrouterBase(MCProcess):
-    def __init__(self, args, port=None, base_dir=None):
+    def __init__(self, args, port=None, base_dir=None, protocol=MCAsciiProtocol()):
         if base_dir is None:
             base_dir = BaseDirectory('mcrouter')
 
@@ -399,7 +400,7 @@ class McrouterBase(MCProcess):
 
         args = McrouterGlobals.preprocessArgs(args)
 
-        MCProcess.__init__(self, args, port, base_dir, junk_fill=True)
+        MCProcess.__init__(self, args, port, base_dir, junk_fill=True, protocol=protocol)
 
         if listen_sock is not None:
             listen_sock.close()
@@ -414,7 +415,7 @@ class McrouterBase(MCProcess):
 class Mcrouter(McrouterBase):
     def __init__(self, config, port=None, default_route=None, extra_args=None,
                  base_dir=None, substitute_config_ports=None,
-                 substitute_port_map=None, replace_map=None):
+                 substitute_port_map=None, replace_map=None, protocol=MCAsciiProtocol()):
         if base_dir is None:
             base_dir = BaseDirectory('mcrouter')
 
@@ -465,7 +466,7 @@ class Mcrouter(McrouterBase):
             self.terminate = terminate
             self.is_alive = is_alive
 
-        McrouterBase.__init__(self, args, port, base_dir)
+        McrouterBase.__init__(self, args, port, base_dir, protocol=protocol)
 
     def change_config(self, new_config_path):
         shutil.copyfile(new_config_path, self.config)
