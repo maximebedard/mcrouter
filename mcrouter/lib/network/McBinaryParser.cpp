@@ -82,7 +82,8 @@ McServerBinaryParser::State McServerBinaryParser::consume(folly::IOBuf& buffer) 
           CHECK(false);
       }
     }
-  
+ 
+  LOG(INFO) << "done"; 
   buffer.trimStart(sectionStart_ - p_);
 
   return state_;

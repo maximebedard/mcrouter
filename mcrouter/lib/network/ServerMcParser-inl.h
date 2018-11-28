@@ -26,6 +26,7 @@ ServerMcParser<Callback>::ServerMcParser(
           /* useJemallocNodumpAllocator */ false,
           debugFifo),
       asciiParser_(*this),
+      binaryParser_(*this),
       callback_(cb),
       debugFifo_(debugFifo) {}
 
@@ -150,6 +151,7 @@ void ServerMcParser<Callback>::handleBinary(folly::IOBuf& readBuffer) {
   // Note: McParser never chains IOBufs.
   auto result = binaryParser_.consume(readBuffer);
 
+  LOG(INFO) << "parsed successfully";
   if (result == McServerBinaryParser::State::ERROR) {
     // Note: we could include actual parsing error instead of
     // "malformed request" (e.g. asciiParser_.getErrorDescription()).

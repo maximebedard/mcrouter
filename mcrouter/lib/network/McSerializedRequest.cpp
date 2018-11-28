@@ -35,9 +35,6 @@ McSerializedRequest::~McSerializedRequest() {
     case mc_umbrella_protocol_DONOTUSE:
       umbrellaMessage_.~UmbrellaSerializedMessage();
       break;
-    case mc_binary_protocol:
-      binaryRequest_.~BinarySerializedRequest();
-      break;
     case mc_unknown_protocol:
     case mc_nprotocols:
       break;

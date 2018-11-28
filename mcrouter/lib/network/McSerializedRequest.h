@@ -11,7 +11,6 @@
 
 #include "mcrouter/lib/mc/protocol.h"
 #include "mcrouter/lib/network/AsciiSerialized.h"
-#include "mcrouter/lib/network/BinarySerialized.h"
 #include "mcrouter/lib/network/CaretSerializedMessage.h"
 #include "mcrouter/lib/network/UmbrellaProtocol.h"
 
@@ -75,7 +74,6 @@ class McSerializedRequest {
 
   union {
     AsciiSerializedRequest asciiRequest_;
-    BinarySerializedRequest binaryRequest_;
     UmbrellaSerializedMessage umbrellaMessage_;
     CaretSerializedMessage caretRequest_;
   };
