@@ -33,7 +33,6 @@ McServerBinaryParser::State McServerBinaryParser::consume(folly::IOBuf& buffer) 
   }
     while (state_ != State::ERROR && state_ != State::COMPLETE
       && avaiBytes >= sectionLength_) {
-      LOG(INFO) << "i";
       switch (state_) {
         case State::PARTIAL_HEADER:
           if (!parseHeader(p_)) {
@@ -83,7 +82,6 @@ McServerBinaryParser::State McServerBinaryParser::consume(folly::IOBuf& buffer) 
       }
     }
  
-  LOG(INFO) << "done"; 
   buffer.trimStart(sectionStart_ - p_);
 
   return state_;
