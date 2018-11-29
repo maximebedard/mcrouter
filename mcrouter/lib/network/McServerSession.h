@@ -312,9 +312,9 @@ class McServerSession
   void readEOF() noexcept final;
   void readErr(const folly::AsyncSocketException& ex) noexcept final;
 
-  /* McParser's callback if ASCII request is read into a typed request */
+  /* McParser's callback if ASCII/Binary request are read into a typed request */
   template <class Request>
-  void asciiRequestReady(Request&& req, mc_res_t result, bool noreply);
+  void requestReady(Request&& req, mc_res_t result, bool noreply);
 
   template <class Request>
   void umbrellaRequestReady(Request&& req, uint64_t reqid);
@@ -336,7 +336,7 @@ class McServerSession
     if (req.key().fullKey().size() > MC_KEY_MAX_LEN_ASCII) {
       result = mc_res_bad_key;
     }
-    asciiRequestReady(std::move(req), result, noreply);
+    requestReady(std::move(req), result, noreply);
   }
 
   /* ASCII parser callbacks for special commands */

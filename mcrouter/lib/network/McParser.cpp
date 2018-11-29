@@ -218,11 +218,10 @@ bool McParser::readDataAvailable(size_t len) {
   if (UNLIKELY(!seenFirstByte_)) {
     seenFirstByte_ = true;
     protocol_ = determineProtocol(*readBuffer_.data());
-    if (protocol_ == mc_ascii_protocol) {
+    if (protocol_ == mc_ascii_protocol || protocol_ == mc_binary_protocol) {
       outOfOrder_ = false;
     } else {
       assert(
-          protocol_ == mc_binary_protocol || 
           protocol_ == mc_umbrella_protocol_DONOTUSE ||
           protocol_ == mc_caret_protocol);
       outOfOrder_ = true;

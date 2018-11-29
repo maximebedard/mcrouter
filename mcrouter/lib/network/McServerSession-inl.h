@@ -17,7 +17,7 @@ namespace facebook {
 namespace memcache {
 
 template <class Request>
-void McServerSession::asciiRequestReady(
+void McServerSession::requestReady(
     Request&& req,
     mc_res_t result,
     bool noreply) {
@@ -25,7 +25,7 @@ void McServerSession::asciiRequestReady(
 
   using Reply = ReplyT<Request>;
 
-  assert(parser_.protocol() == mc_ascii_protocol);
+  assert(parser_.protocol() == mc_ascii_protocol || parser_.protocol() == mc_binary_protocol);
   assert(!parser_.outOfOrder());
 
   if (state_ != STREAMING) {
