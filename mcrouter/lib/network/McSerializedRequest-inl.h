@@ -73,7 +73,16 @@ McSerializedRequest::McSerializedRequest(
       }
       break;
     case mc_binary_protocol:
-      LOG(INFO) << "todo";
+      new (&binaryRequest_) BinarySerializedMessage;
+      // TODO: actually use the max binary size
+      if (detail::getKeySize(req) > MC_KEY_MAX_LEN_ASCII) {
+        result_ = Result::BAD_KEY;
+        return;
+      }
+      if (!binaryRequest_.prepare(req, iovsBegin_, iovsCount_)) {
+        result_ = Result::ERROR;
+      }
+      break;
     case mc_caret_protocol:
       new (&caretRequest_) CaretSerializedMessage;
       if (detail::getKeySize(req) > MC_KEY_MAX_LEN_UMBRELLA) {

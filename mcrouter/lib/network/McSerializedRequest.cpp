@@ -14,6 +14,8 @@ size_t McSerializedRequest::getBodySize() {
   switch (protocol_) {
     case mc_ascii_protocol:
       return asciiRequest_.getSize();
+    case mc_binary_protocol:
+      return binaryRequest_.getSize();
     case mc_caret_protocol:
       return caretRequest_.getSizeNoHeader();
     case mc_umbrella_protocol_DONOTUSE:
@@ -28,6 +30,9 @@ McSerializedRequest::~McSerializedRequest() {
   switch (protocol_) {
     case mc_ascii_protocol:
       asciiRequest_.~AsciiSerializedRequest();
+      break;
+    case mc_binary_protocol:
+      binaryRequest_.~BinarySerializedMessage();
       break;
     case mc_caret_protocol:
       caretRequest_.~CaretSerializedMessage();
