@@ -33,8 +33,7 @@ McServerBinaryParser::State McServerBinaryParser::consume(folly::IOBuf& buffer) 
     sectionStart_  = p_;
     state_         = State::PARTIAL_HEADER;
   }
-    while (state_ != State::ERROR && state_ != State::COMPLETE
-      && avaiBytes >= sectionLength_) {
+    while (state_ != State::ERROR && state_ != State::COMPLETE && avaiBytes >= sectionLength_) {
       switch (state_) {
         case State::PARTIAL_HEADER:
           if (!parseHeader(p_)) {
@@ -99,7 +98,6 @@ bool McServerBinaryParser::parseHeader(const char * bytes) {
   // TODO validate command constraint (i.e. no extras, no value)
   switch (getOpCode()) {
     case mc_opcode_set:
-      LOG(INFO) << "in set";
       currentMessage_.emplace<McSetRequest>();
       consumer_ = &McServerBinaryParser::consumeSetLike<McSetRequest, false>;
       return true;

@@ -1,3 +1,5 @@
+#pragma once
+
 namespace facebook {
 namespace memcache {
 namespace binary_protocol {

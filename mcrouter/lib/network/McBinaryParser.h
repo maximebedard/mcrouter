@@ -20,16 +20,11 @@
 #include "mcrouter/lib/fbi/cpp/TypeList.h"
 #include "mcrouter/lib/network/CarbonMessageList.h"
 #include "mcrouter/lib/network/gen/Memcache.h"
-#include "mcrouter/lib/network/McAsciiParser.h"
+#include "mcrouter/lib/network/McAsciiParser.h" // TODO remove this
 #include "mcrouter/lib/network/BinaryHeader.h"
 
 namespace facebook {
 namespace memcache {
-
-namespace detail {
-template <class RequestList>
-class CallbackBase;
-} // detail
 
 class McServerBinaryParser {
  public:

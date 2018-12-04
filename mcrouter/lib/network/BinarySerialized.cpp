@@ -68,6 +68,7 @@ void BinarySerializedMessage::writeResponseHeader(uint8_t opCode, uint16_t keyLe
 }
 
 void BinarySerializedMessage::prepareImpl(const McSetRequest& request) {
+    LOG(INFO) << "serializing set request";
     auto value = coalesceAndGetRange(const_cast<folly::IOBuf&>(request.value()));
     writeRequestHeader(0x01, request.key().fullKey().size(), value.size(), 24);
 
