@@ -11,8 +11,6 @@
 #include <folly/Range.h>
 
 #include "mcrouter/lib/McOperation.h"
-#include "mcrouter/lib/network/gen/Memcache.h"
-#include "mcrouter/lib/network/gen/MemcacheRoutingGroups.h"
 
 namespace facebook {
 namespace memcache {
@@ -42,16 +40,9 @@ class BinarySerializedMessage {
   template <class Request>
   bool prepare(const Request& request, const struct iovec*& iovOut, size_t& niovOut);
 
-  template <class Request>
-  bool prepare(
-          const Request& request,
-          folly::Optional<folly::IOBuf>& key,
-          const struct iovec*& iovOut,
-          size_t& niovOut);
+  template <class Reply>
+  bool prepare(Reply&& reply, size_t reqId, const struct iovec*& iovOut, size_t& niovOut);
 
-  /**
-   * Returns the size of the request.
-   */
   size_t getSize() const;
 
  private:
@@ -70,48 +61,25 @@ class BinarySerializedMessage {
   folly::Optional<folly::IOBuf> iobuf_;
   folly::Optional<std::string> auxString_;
 
-  void addString(folly::ByteRange range);
-  void addString(folly::StringPiece str);
+  void write(folly::ByteRange);
+  void write(folly::StringPiece);
 
-  template <class Arg1, class Arg2>
-  void addStrings(Arg1&& arg1, Arg2&& arg2);
-  template <class Arg, class... Args>
-  void addStrings(Arg&& arg, Args&&... args);
+  void writeRequestHeader(uint8_t opCode, uint16_t keyLen, uint8_t valueLen, uint8_t extrasLen);
+  void writeResponseHeader(uint8_t opCode, uint16_t keyLen, uint8_t valueLen, uint8_t extrasLen);
 
-  template <class Request>
-  void keyValueRequestCommon(folly::StringPiece prefix, const Request& request);
 
-  // Get-like ops.
-  void prepareImpl(const McGetRequest& request);
-  void prepareImpl(const McGetsRequest& request);
-  void prepareImpl(const McMetagetRequest& request);
-  void prepareImpl(const McLeaseGetRequest& request);
-  // Update-like ops.
   void prepareImpl(const McSetRequest& request);
-  void prepareImpl(const McAddRequest& request);
-  void prepareImpl(const McReplaceRequest& request);
-  void prepareImpl(const McAppendRequest& request);
-  void prepareImpl(const McPrependRequest& request);
-  void prepareImpl(const McCasRequest& request);
-  void prepareImpl(const McLeaseSetRequest& request);
-  // Arithmetic ops.
-  void prepareImpl(const McIncrRequest& request);
-  void prepareImpl(const McDecrRequest& request);
-  // Delete op.
-  void prepareImpl(const McDeleteRequest& request);
-  // Touch op.
-  void prepareImpl(const McTouchRequest& request);
-  // Version op.
-  void prepareImpl(const McVersionRequest& request);
-  // FlushAll op.
-  void prepareImpl(const McFlushAllRequest& request);
-
+  void prepareImpl(McSetReply&& reply);
   // Everything else is false.
   template <class Request>
   std::false_type prepareImpl(const Request& request);
 
+  template <class Reply>
+  std::false_type prepareImpl(Reply&& reply);
+
   struct PrepareImplWrapper;
 };
+
 }
 } // facebook::memcache
 

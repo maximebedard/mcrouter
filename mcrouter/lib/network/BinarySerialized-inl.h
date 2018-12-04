@@ -8,73 +8,73 @@
 namespace facebook {
 namespace memcache {
 
+struct BinarySerializedMessage::PrepareImplWrapper {
+ template <class Request>
+ using RequestT =
+     decltype(std::declval<BinarySerializedMessage>().prepareImpl(
+         std::declval<const Request&>()));
+
+ template <class Request>
+ typename std::enable_if<
+     std::is_same<RequestT<Request>, std::false_type>::value,
+     bool>::type static prepare(BinarySerializedMessage&, const Request&) {
+   return false;
+ }
+
+ template <class Request>
+ typename std::enable_if<
+     std::is_same<RequestT<Request>, void>::value,
+     bool>::type static prepare(BinarySerializedMessage& s, const Request& request) {
+   s.prepareImpl(request);
+   return true;
+ }
+
+ // temporarily stub out repliess
+ template <class Reply>
+ using ReplyT =
+     decltype(std::declval<BinarySerializedMessage>().prepareImpl(
+         std::declval<Reply&&>()));
+
+ template <class Reply>
+ typename std::enable_if<
+     std::is_same<ReplyT<Reply>, std::false_type>::value,
+     bool>::type static prepare(BinarySerializedMessage&, Reply&&) {
+   return false;
+ }
+
+ template <class Reply>
+ typename std::enable_if<
+     std::is_same<ReplyT<Reply>, void>::value,
+     bool>::type static prepare(BinarySerializedMessage& s, const Reply&& reply) {
+   s.prepareImpl(reply);
+   return true;
+ }
+};
+
 template <class Request>
 bool BinarySerializedMessage::prepare(
-          const Request& request,
-          folly::Optional<folly::IOBuf>& key,
-          const struct iovec*& iovOut,
-          size_t& niovOut) {
-    return prepare(std::move(request), iovOut, niovOut);
+    const Request& request,
+	const struct iovec*& iovOut,
+    size_t& niovOut) {
+  iovsCount_ = 0;
+  auto r = PrepareImplWrapper::prepare(*this, request);
+  iovOut = iovs_;
+  niovOut = iovsCount_;
+  return r;
 }
 
-//
-//struct AsciiSerializedRequest::PrepareImplWrapper {
-//  template <class Request>
-//  using PrepareType =
-//      decltype(std::declval<AsciiSerializedRequest>().prepareImpl(
-//          std::declval<const Request&>()));
-//
-//  template <class Request>
-//  typename std::enable_if<
-//      std::is_same<PrepareType<Request>, std::false_type>::value,
-//      bool>::type static prepare(AsciiSerializedRequest&, const Request&) {
-//    return false;
-//  }
-//
-//  template <class Request>
-//  typename std::enable_if<
-//      std::is_same<PrepareType<Request>, void>::value,
-//      bool>::
-//      type static prepare(AsciiSerializedRequest& s, const Request& request) {
-//    s.prepareImpl(request);
-//    return true;
-//  }
-//};
-//
-//template <class Arg1, class Arg2>
-//void AsciiSerializedRequest::addStrings(Arg1&& arg1, Arg2&& arg2) {
-//  addString(std::forward<Arg1>(arg1));
-//  addString(std::forward<Arg2>(arg2));
-//}
-//
-//template <class Arg, class... Args>
-//void AsciiSerializedRequest::addStrings(Arg&& arg, Args&&... args) {
-//  addString(std::forward<Arg>(arg));
-//  addStrings(std::forward<Args>(args)...);
-//}
-//
-//template <class Request>
-//bool AsciiSerializedRequest::prepare(
-//    const Request& request,
-//    const struct iovec*& iovOut,
-//    size_t& niovOut) {
-//  iovsCount_ = 0;
-//  auto r = PrepareImplWrapper::prepare(*this, request);
-//  iovOut = iovs_;
-//  niovOut = iovsCount_;
-//  return r;
-//}
-//
-//template <class Arg1, class Arg2>
-//void AsciiSerializedReply::addStrings(Arg1&& arg1, Arg2&& arg2) {
-//  addString(std::forward<Arg1>(arg1));
-//  addString(std::forward<Arg2>(arg2));
-//}
-//
-//template <class Arg, class... Args>
-//void AsciiSerializedReply::addStrings(Arg&& arg, Args&&... args) {
-//  addString(std::forward<Arg>(arg));
-//  addStrings(std::forward<Args>(args)...);
-//}
+template <class Reply>
+bool BinarySerializedMessage::prepare(
+    Reply&& reply,
+    size_t reqId,
+	const struct iovec*& iovOut,
+    size_t& niovOut) {
+  iovsCount_ = 0;
+  auto r = PrepareImplWrapper::prepare(*this, reply);
+  iovOut = iovs_;
+  niovOut = iovsCount_;
+  return r;
+}
+
 }
 } // facebook::memcache

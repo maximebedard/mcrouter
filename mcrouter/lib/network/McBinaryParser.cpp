@@ -14,13 +14,15 @@
 #include "mcrouter/lib/fbi/cpp/LogFailure.h"
 #include "mcrouter/lib/IOBufUtil.h"
 
+using namespace facebook::memcache::binary_protocol;
+
 namespace facebook {
 namespace memcache {
 
 McServerBinaryParser::State McServerBinaryParser::consume(folly::IOBuf& buffer) {
   assert(state_ != State::ERROR);
   assert(state_ != State::COMPLETE);
-  
+
   uint64_t avaiBytes = buffer.length();
   const char *p_ = reinterpret_cast<const char*>(buffer.data());
 
@@ -72,7 +74,7 @@ McServerBinaryParser::State McServerBinaryParser::consume(folly::IOBuf& buffer) 
             sectionStart_, sectionStart_ + sectionLength_);
           sectionStart_ += sectionLength_;
           state_ = State::COMPLETE;
-          
+
           LOG(INFO) << "value";
           (this->*consumer_)();
           break;
@@ -81,7 +83,7 @@ McServerBinaryParser::State McServerBinaryParser::consume(folly::IOBuf& buffer) 
           CHECK(false);
       }
     }
- 
+
   buffer.trimStart(sectionStart_ - p_);
 
   return state_;

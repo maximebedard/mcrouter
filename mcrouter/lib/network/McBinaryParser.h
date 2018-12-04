@@ -21,6 +21,7 @@
 #include "mcrouter/lib/network/CarbonMessageList.h"
 #include "mcrouter/lib/network/gen/Memcache.h"
 #include "mcrouter/lib/network/McAsciiParser.h"
+#include "mcrouter/lib/network/BinaryHeader.h"
 
 namespace facebook {
 namespace memcache {
@@ -109,39 +110,6 @@ class McServerBinaryParser {
     return ntohl(header_->cas);
   }
 
-  static constexpr uint64_t HeaderLength = 24;
-
-  typedef struct RequestHeader {
-    uint8_t  magic;
-    uint8_t  opCode;
-    uint16_t keyLen;
-    uint8_t  extrasLen;
-    uint8_t  dataType;
-    uint16_t vBucketId;
-    uint32_t totalBodyLen;
-    uint32_t opaque;
-    uint32_t cas;
-  } __attribute__((__packed__)) RequestHeader_t;
-
-  typedef struct SetExtras {
-    uint32_t flags;
-    uint32_t exptime;
-  } __attribute__((__packed__)) SetExtras_t;
-
-  typedef struct ArithExtras {
-    uint32_t delta;
-    uint32_t initialValue;
-    uint32_t exptime;
-  } __attribute__((__packed__)) ArithExtras_t;
-
-  typedef struct TouchExtras {
-    uint32_t exptime;
-  } __attribute__((__packed__)) TouchExtras_t;
-
-  typedef struct FlushExtras {
-    uint32_t exptime;
-  } __attribute__((__packed__)) FlushExtras_t;
-
   bool parseHeader(const char* bytes);
 
   template <class Request, bool quiet>
@@ -165,7 +133,7 @@ class McServerBinaryParser {
   void consumeFlush();
 
   // Network byte-ordered fields
-  const RequestHeader_t *header_;
+  const binary_protocol::RequestHeader_t *header_;
 
   folly::IOBuf currentExtras_;
   folly::IOBuf currentKey_;
